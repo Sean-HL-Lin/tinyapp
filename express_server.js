@@ -26,17 +26,17 @@ const urlDatabase = {
 app.set('view engine', 'ejs')
 
 
-// app.get("/", (req, res) => {
-//   res.send("Hello!");
-// });
+app.get("/", (req, res) => {
+  res.send("Hello!");
+});
 
-// app.get("/urls.json", (req, res) => {
-//   res.json(urlDatabase);
-// });
+app.get("/urls.json", (req, res) => {
+  res.json(urlDatabase);
+});
 
-// app.get("/hello", (req, res) => {
-//   res.send("<html><body>Hello <b>World</b></body></html>\n");
-// });
+app.get("/hello", (req, res) => {
+  res.send("<html><body>Hello <b>World</b></body></html>\n");
+});
 
 app.get("/urls", (req, res) => {
   console.log(req.cookies["username"])
@@ -56,7 +56,7 @@ app.post("/urls", (req, res) => {
   //console.log(req.body);
   const shorturl = generateRandomString();
   urlDatabase[shorturl] =  req.body.longURL;
-  res.send();///////
+  res.redirect('/urls');///////
 });
 
 app.get("/u/:shortURL", (req, res) => {
