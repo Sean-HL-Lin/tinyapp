@@ -4,33 +4,18 @@ const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 const bcrypt = require('bcrypt');
 const cookieSession = require('cookie-session');
+const helpers = require('./helpers');
 
+app.set('view engine', 'ejs');
+
+//////////////// middlewares ////////////////////////////////
 app.use(cookieSession({
   name: 'session',
   keys: ['ThisIsSecret!'],
   maxAge: 24 * 60 * 60 * 1000
 }));
 
-
 app.use(bodyParser.urlencoded({ extended: true }));
-
-const userLookup = function(tarEmail) {
-  for (let item in users) {
-    if (users[item].email === tarEmail) {
-      return users[item];
-    }
-  }
-  return false;
-};
-
-const generateRandomString = function() {
-  const choice = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  let result = '';
-  for (let i = 1; i <= 6; i++) {
-    result += choice[Math.floor(Math.random() * choice.length)];
-  }
-  return result;
-};
 
 const urlsForUser = function(id) {
   let result = {};
@@ -42,6 +27,8 @@ const urlsForUser = function(id) {
   return result;
 };
 
+
+/////////////////////// databases //////////////////////////////
 const users = {
   "userRandomID": {
     id: "userRandomID",
@@ -55,19 +42,16 @@ const users = {
   }
 };
 
-// const urlDatabase = {
-//   "b2xVn2": "http://www.lighthouselabs.ca",
-//   "9sm5xK": "http://www.google.com"
-// };
-
 const urlDatabase = {
   b6UTxQ: { longURL: "https://www.tsn.ca", userID: "aJ48lW" },
   i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" }
 };
 
-app.set('view engine', 'ejs');
 
 
+///////////////////////////routes/////////////////////////////////////////
+
+/////// basic tests//////////////////
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
@@ -76,35 +60,39 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
+
+/////////// urls' ////////////
 app.get("/urls", (req, res) => {
   const id = req.session.user_id;
   const displayURLS = urlsForUser(id);
-  res.render('urls_index', { urls: displayURLS, user: users[req.session.user_id] });
+  const templateVars = { urls: displayURLS, user: users[req.session.user_id] };
+  res.render('urls_index', templateVars);
 });
 
+//new form
 app.get("/urls/new", (req, res) => {
   if (!req.session.user_id) {
     res.redirect('/urls');
   }
-  res.render("urls_new", { user: users[req.session.user_id] });
+  const templateVars = { user: users[req.session.user_id] };
+  res.render("urls_new", templateVars);
 });
 
+//detailed url page
 app.get("/urls/:id", (req, res) => {
   const templateVars = { shortURL: req.params.id, URL: urlDatabase[req.params.id], user: users[req.session.user_id] };
   res.render('urls_show.ejs', templateVars);
 });
 
+
+//add new url
 app.post("/urls", (req, res) => {
-  const shorturl = generateRandomString();
+  const shorturl = helpers.generateRandomString();
   urlDatabase[shorturl] = { longURL: req.body.longURL, userID: req.session.user_id };
-  res.redirect('/urls');///////
+  res.redirect('/urls');
 });
 
-app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL].longURL;
-  res.redirect(`${longURL}`);
-});
-
+// delelte url
 app.post('/urls/:shortURL/delete', (req, res) => {
   const id = req.session.user_id;
   if (urlDatabase[req.params.shortURL].userID === id) {
@@ -115,25 +103,39 @@ app.post('/urls/:shortURL/delete', (req, res) => {
   res.send('you have no access to delete the url');
 });
 
+// update url
 app.post('/urls/:shortURL', (req, res) => {
-  urlDatabase[req.params.shortURL] = req.body.newLongURL;
-  res.redirect(`/urls/${req.params.shortURL}`);
+  if (req.session.user_id && typeof users[req.session.user_id] === 'object') {
+    urlDatabase[req.params.shortURL].longURL = req.body.newLongURL;
+    res.redirect(`/urls/${req.params.shortURL}`);
+  }
+  res.status(400);
+  res.send('Authentication failed');
 });
 
+// access long url through short url
+app.get("/u/:shortURL", (req, res) => {
+  const longURL = urlDatabase[req.params.shortURL].longURL;
+  res.redirect(`${longURL}`);
+});
+
+///////Authentications////////////////
 app.post('/logout', (req, res) => {
   req.session = null;
   res.redirect('/urls');
 });
 
 app.get('/register', (req, res) => {
-  res.render('register', { user: req.session.user_id });
+  const templateVars = { user: req.session.user_id };
+  res.render('register', templateVars);
 });
 
 app.post('/register', (req, res) => {
   const email = req.body.email;
   const password = bcrypt.hashSync(req.body.password, 10);
-  const id = generateRandomString();
-  if (!email || !password || userLookup(email)) {
+  const id = helpers.generateRandomString();
+  const user = helpers.getUserByEmail(email, users);
+  if (!email || !password || typeof user === 'object') {
     res.status(400);
     res.send('something is wrong');
   }
@@ -143,22 +145,37 @@ app.post('/register', (req, res) => {
 });
 
 app.get('/login', (req, res) => {
-  res.render('login', { user: users[req.session.user_id] });
+  const templateVars = { user: users[req.session.user_id] };
+  res.render('login', templateVars);
 });
 
 app.post('/login', (req, res) => {
-  const userEmail = req.body.email;
-  const id = userLookup(userEmail).id;
-
-  if (users[id] && bcrypt.compareSync(req.body.password, users[id].password)) {
-    req.session.user_id = id;
-    res.redirect('/urls');
+  if (req.body.email && req.body.password) {
+    const userEmail = req.body.email;
+    const userPassword = req.body.password;
+    const user = helpers.getUserByEmail(userEmail,users);
+    let id = '';
+    if (typeof user === 'object') {
+      id = helpers.getUserByEmail(userEmail,users).id;
+    } else {
+      id = 'noMatchedId';
+    }
+  
+    if (typeof users[id] === 'object' && bcrypt.compareSync(userPassword, users[id].password)) {
+      req.session.user_id = id;
+      res.redirect('/urls');
+    } else {
+      res.status(400);
+      res.send('No match email or wrong password');
+    }
   } else {
     res.status(400);
-    res.send('something is wrong');
+    res.send("password or email can't be left empty");
   }
 });
 
+
+/////////////////////////////////////////////////////////////
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
