@@ -17,4 +17,4 @@ const generateRandomString = function() {
 };
 
 
-module.exports = {getUserByEmail,generateRandomString}
+module.exports = {getUserByEmail,generateRandomString};

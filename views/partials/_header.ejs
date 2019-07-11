@@ -11,8 +11,8 @@
       </div>
     </div>
     <% if (!user) {%>
-      <a href="/login" class='btn btn-primary mr-3'>Login</a>
-      <a href="/Register" class='btn btn-primary'>Register</a>
+      <a href="/login" class='btn bg-success mr-3 border-danger text-light'>Login</a>
+      <a href="/Register" class='btn bg-success border-danger text-light'>Register</a>
 
       <!-- <form class='form-inline' action="/login" method="POST">
         <div class='form-group mx-sm-3 mb-2'>
@@ -26,7 +26,7 @@
         <div class='form-group mx-sm-3 mb-2'>
           <input class='d-none' class="form-control" type="text" name="email" value= <%= user.email %>>
         </div>
-        <button class='btn btn-primary mb-2'>logout</button>
+        <button class='btn bg-success mb-2 border-danger text-light'>logout</button>
       </form>
     <% }%>
   </nav>
