@@ -3,6 +3,7 @@ const app = express();
 const PORT = 8080; // default port 8080
 const cookieParser = require('cookie-parser')
 const bodyParser = require("body-parser");
+const bcrypt = require('bcrypt')
 
 app.use(cookieParser())
 app.use(bodyParser.urlencoded({extended: true}));
@@ -80,7 +81,6 @@ app.get("/urls", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
-  console.log(req.cookies['user_id'])
   if (!req.cookies['user_id']) {
     res.redirect('/urls')
   }
@@ -129,7 +129,7 @@ app.get('/register', (req, res) => {
 
 app.post('/register', (req,res) => {
   const email = req.body.email;
-  const password = req.body.password;
+  const password = bcrypt.hashSync(req.body.password, 10);;
   const id = generateRandomString();
   if (!email || !password || userLookup(email)) {
     res.status(400);
@@ -147,13 +147,14 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
   const userEmail = req.body.email
   const id = userLookup(userEmail).id
-  
-  if (users[id] && users[id].password === req.body.password) {
+
+  if (users[id] && bcrypt.compareSync(req.body.password, users[id].password)) {
     res.cookie('user_id', id);
     res.redirect('/urls')
+  } else {
+    res.status(400);
+    res.send('something is wrong');
   }
-  res.status(400);
-  res.send('something is wrong');
 })
 
 app.listen(PORT, () => {
