@@ -21,10 +21,12 @@
         <button class='btn btn-primary mb-2'>login</button>
       </form> -->
     <% }  else { %> 
-
       <form class='form-inline' action="/logout" method="POST">
         <h4> Logged in As: <%= user.email %></h4>
-        <button class='btn btn-primary mb-2 ml-2'>logout</button>
+        <div class='form-group mx-sm-3 mb-2'>
+          <input class='d-none' class="form-control" type="text" name="email" value= <%= user.email %>>
+        </div>
+        <button class='btn btn-primary mb-2'>logout</button>
       </form>
     <% }%>
   </nav>
