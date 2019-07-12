@@ -11,17 +11,10 @@
       </div>
     </div>
     <% if (!user) {%>
-      <a href="/login" class='btn bg-success mr-3 border-danger text-light'>Login</a>
-      <a href="/Register" class='btn bg-success border-danger text-light'>Register</a>
-
-      <!-- <form class='form-inline' action="/login" method="POST">
-        <div class='form-group mx-sm-3 mb-2'>
-          <input type="text" name="email" class="form-control" placeholder="Enter Your Email Here">
-        </div>
-        <button class='btn btn-primary mb-2'>login</button>
-      </form> -->
+      <a href="/login" class='nav-item nav-link btn bg-success mr-3 border-danger text-light'>Login</a>
+      <a href="/Register" class='nav-item nav-link btn bg-success border-danger text-light'>Register</a>
     <% }  else { %> 
-      <form class='form-inline' action="/logout" method="POST">
+      <form class='nav-item form-inline' action="/logout" method="POST">
         <h4> Logged in As: <%= user.email %></h4>
         <div class='form-group mx-sm-3 mb-2'>
           <input class='d-none' class="form-control" type="text" name="email" value= <%= user.email %>>

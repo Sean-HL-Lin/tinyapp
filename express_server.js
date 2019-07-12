@@ -5,10 +5,12 @@ const bodyParser = require("body-parser");
 const bcrypt = require('bcrypt');
 const cookieSession = require('cookie-session');
 const helpers = require('./helpers');
+const methodOverride = require('method-override');
 
 app.set('view engine', 'ejs');
 
 //////////////// middlewares ////////////////////////////////
+
 app.use(cookieSession({
   name: 'session',
   keys: ['ThisIsSecret!'],
@@ -27,6 +29,7 @@ const urlsForUser = function(id) {
   return result;
 };
 
+app.use(methodOverride('_method'));
 
 /////////////////////// databases //////////////////////////////
 const users = {
@@ -43,25 +46,25 @@ const users = {
 };
 
 const urlDatabase = {
-  b6UTxQ: { longURL: "https://www.tsn.ca", userID: "aJ48lW" },
-  i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" }
+  b6UTxQ: { longURL: "https://www.tsn.ca", userID: "aJ48lW" ,times: 0},
+  i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" , times:0}
 };
 
 
 
 ///////////////////////////routes/////////////////////////////////////////
 
-/////// basic tests//////////////////
+
 app.get("/", (req, res) => {
+  if (req.session.user_id && users[req.session.user_id]) {
+    res.redirect('/urls');
+  }
+  res.redirect('/login');
+
   res.send("Hello!");
 });
 
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
-});
 
-
-/////////// urls' ////////////
 app.get("/urls", (req, res) => {
   const id = req.session.user_id;
   const displayURLS = urlsForUser(id);
@@ -80,7 +83,14 @@ app.get("/urls/new", (req, res) => {
 
 //detailed url page
 app.get("/urls/:id", (req, res) => {
-  const templateVars = { shortURL: req.params.id, URL: urlDatabase[req.params.id], user: users[req.session.user_id] };
+  let targetURL = urlDatabase[req.params.id];
+  targetURL.times += 1;
+  if (!targetURL.visitedBy.includes(users[req.session.user_id].email)) {
+    targetURL.visitedBy.push(users[req.session.user_id].email);
+  }
+  const date = new Date();
+  targetURL.history.push([date, req.session.user_id]);
+  const templateVars = { shortURL: req.params.id, URL: targetURL, user: users[req.session.user_id]};
   res.render('urls_show.ejs', templateVars);
 });
 
@@ -88,12 +98,12 @@ app.get("/urls/:id", (req, res) => {
 //add new url
 app.post("/urls", (req, res) => {
   const shorturl = helpers.generateRandomString();
-  urlDatabase[shorturl] = { longURL: req.body.longURL, userID: req.session.user_id };
+  urlDatabase[shorturl] = {longURL: req.body.longURL, userID: req.session.user_id, times: 0, visitedBy: [], history:[]};
   res.redirect('/urls');
 });
 
 // delelte url
-app.post('/urls/:shortURL/delete', (req, res) => {
+app.delete('/urls/:shortURL/delete', (req, res) => {
   const id = req.session.user_id;
   if (urlDatabase[req.params.shortURL].userID === id) {
     delete urlDatabase[req.params.shortURL];
@@ -104,7 +114,7 @@ app.post('/urls/:shortURL/delete', (req, res) => {
 });
 
 // update url
-app.post('/urls/:shortURL', (req, res) => {
+app.put('/urls/:shortURL', (req, res) => {
   if (req.session.user_id && typeof users[req.session.user_id] === 'object') {
     urlDatabase[req.params.shortURL].longURL = req.body.newLongURL;
     res.redirect(`/urls/${req.params.shortURL}`);
